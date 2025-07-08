@@ -15,7 +15,7 @@ from kfp.compiler import compiler
 
 def run_kfp_build(pipeline: Callable, *args, **kwargs) -> dict:
     """
-    Build KFP pipeline.
+    Build KFP pipeline as YAML.
 
     Parameters
     ----------

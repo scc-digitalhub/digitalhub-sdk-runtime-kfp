@@ -10,13 +10,14 @@ from contextlib import contextmanager
 
 import digitalhub as dh
 from digitalhub.runtimes.enums import RuntimeEnvVar
-from digitalhub.stores.client.dhcore.enums import DhcoreEnvVar
+from digitalhub.stores.credentials.enums import CredsEnvVar
 from kfp import dsl
+
 
 LABEL_PREFIX = "kfp-digitalhub-runtime-"
 PROJECT = os.environ.get(RuntimeEnvVar.PROJECT.value)
-ENDPOINT = os.environ.get(DhcoreEnvVar.ENDPOINT.value)
-WORKFLOW_IMAGE = os.environ.get(DhcoreEnvVar.WORKFLOW_IMAGE.value)
+ENDPOINT = os.environ.get(CredsEnvVar.DHCORE_ENDPOINT.value)
+WORKFLOW_IMAGE = os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value)
 
 
 @contextmanager
@@ -40,94 +41,93 @@ class PipelineContext:
         **kwargs,
     ) -> dsl.ContainerOp:
         """
-        Execute a function in DHCore.
+        Create a KFP ContainerOp to execute a DHCore function or workflow.
 
-        This function creates a KFP ContainerOp that executes a function
-        or another workflow in DHCore.
-        The function is executed in the context of the current project,
-        which is retrieved from DHCore when the pipeline context
-        is initialized.
+        This method builds the command and output mapping for a pipeline step,
+        ensuring correct argument passing and output file handling.
 
         Parameters
         ----------
         name : str
-            The name of the step in KFP.
-        function : str
-            The name of the function to execute. Either function or workflow must be provided.
-        workflow : str
-            The Args workflow to execute. Either function or workflow must be provided.
-        action : str
-            The name of the action to execute. May be omitted in case of workflow execution (defaulting to 'pipeline').
-        inputs : dict
-            A list of complex input parameters.
-        outputs : dict
-            A list of complex output parameters.
-        parameters : dict
-            A list of simple input parameters.
+            Name of the KFP step.
+        function : str, optional
+            Name of the DHCore function to execute.
+        workflow : str, optional
+            Name of the DHCore workflow to execute.
+        action : str, optional
+            Action to execute (defaults to 'pipeline' for workflows).
+        inputs : dict, optional
+            Complex input parameters.
+        outputs : dict, optional
+            Complex output parameters.
+        parameters : dict, optional
+            Simple input parameters.
         kwargs : dict
-            Additional keyword arguments to pass to the step.
+            Additional keyword arguments.
 
         Returns
         -------
         dsl.ContainerOp
-            A KFP ContainerOp for the step.
+            The constructed KFP ContainerOp.
+
+        Raises
+        ------
+        RuntimeError
+            If neither function nor workflow is provided, or if the specified entity is not found.
+        Exception
+            If an output is specified as a PipelineParam.
         """
-        if kwargs is None:
-            kwargs = {}
+        # Prepare properties and arguments
         props = {**kwargs}
         props = {k: v for k, v in props.items() if v is not None}
 
-        parameters = {} if parameters is None else parameters
-        inputs = {} if inputs is None else inputs
-        outputs = {} if outputs is None else outputs
+        parameters = parameters if parameters is not None else {}
+        inputs = inputs if inputs is not None else {}
+        outputs = outputs if outputs is not None else {}
 
-        if function is None and workflow is None:
+        if not function and not workflow:
             raise RuntimeError("Either function or workflow must be provided.")
 
-        if function is not None:
+        function_object = workflow_object = None
+        if function:
             function_object = dh.get_function(function, project=PROJECT)
             if function_object is None:
                 raise RuntimeError(f"Function {function} not found")
-        elif workflow is not None:
+        if workflow:
             workflow_object = dh.get_workflow(workflow, project=PROJECT)
             if workflow_object is None:
                 raise RuntimeError(f"Workflow {workflow} not found")
-            if action is None:
+            if not action:
                 action = "pipeline"
 
         file_outputs = {"run_id": "/tmp/run_id"}
-
         cmd = [
             "python",
             "step.py",
             "--project",
             PROJECT,
-            "--function" if function is not None else "--workflow",
-            function if function is not None else workflow,
-            "--function_id" if function is not None else "--workflow_id",
-            function_object.id if function is not None else workflow_object.id,
-            "--action",
-            action,
-            "--jsonprops",
-            json.dumps(props),
         ]
 
-        # complex input parameters
+        if function:
+            cmd += ["--function", function, "--function_id", function_object.id]
+        else:
+            cmd += ["--workflow", workflow, "--workflow_id", workflow_object.id]
+
+        cmd += ["--action", action, "--jsonprops", json.dumps(props)]
+
+        # Add input parameters
         for param, val in inputs.items():
             cmd += ["-ie", f"{param}={val}"]
-
-        # simple input parameters
         for param, val in parameters.items():
             cmd += ["-iv", f"{param}={val}"]
 
-        # complex output parameters
+        # Add output parameters and file outputs
         for param, val in outputs.items():
             cmd += ["-oe", f"{param}={val}"]
             if isinstance(val, dsl.PipelineParam):
-                raise Exception("Invalid output specification. cannot use pipeline params")
-            else:
-                oname = str(val)
-            file_outputs[oname.replace(".", "_")] = f"/tmp/entity_{oname}"  # not using path.join to avoid windows "\"
+                raise Exception("Invalid output specification: cannot use pipeline params")
+            oname = str(val).replace(".", "_")
+            file_outputs[oname] = f"/tmp/entity_{oname}"
 
         cop = dsl.ContainerOp(
             name=name,
@@ -136,10 +136,10 @@ class PipelineContext:
             file_outputs=file_outputs,
         )
         cop.add_pod_label(LABEL_PREFIX + "project", PROJECT)
-        if function is not None:
+        if function:
             cop.add_pod_label(LABEL_PREFIX + "function", function)
             cop.add_pod_label(LABEL_PREFIX + "function_id", function_object.id)
-        if workflow is not None:
+        if workflow:
             cop.add_pod_label(LABEL_PREFIX + "workflow", workflow)
             cop.add_pod_label(LABEL_PREFIX + "workflow_id", workflow_object.id)
         cop.add_pod_label(LABEL_PREFIX + "action", action)
