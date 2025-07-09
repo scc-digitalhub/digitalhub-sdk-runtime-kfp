@@ -13,11 +13,14 @@ from digitalhub.runtimes.enums import RuntimeEnvVar
 from digitalhub.stores.credentials.enums import CredsEnvVar
 from kfp import dsl
 
-
 LABEL_PREFIX = "kfp-digitalhub-runtime-"
-PROJECT = os.environ.get(RuntimeEnvVar.PROJECT.value)
-ENDPOINT = os.environ.get(CredsEnvVar.DHCORE_ENDPOINT.value)
-WORKFLOW_IMAGE = os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value)
+
+
+class PipelineParamEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, dsl.PipelineParam):
+            return str(obj)
+        return super().default(obj)
 
 
 @contextmanager
@@ -32,12 +35,9 @@ class PipelineContext:
     def step(
         self,
         name: str,
+        action: str,
         function: str | None = None,
         workflow: str | None = None,
-        action: str | None = None,
-        inputs: dict | None = None,
-        outputs: dict | None = None,
-        parameters: dict | None = None,
         **kwargs,
     ) -> dsl.ContainerOp:
         """
@@ -50,97 +50,80 @@ class PipelineContext:
         ----------
         name : str
             Name of the KFP step.
+        action : str
+            Action to execute.
         function : str, optional
             Name of the DHCore function to execute.
         workflow : str, optional
             Name of the DHCore workflow to execute.
-        action : str, optional
-            Action to execute (defaults to 'pipeline' for workflows).
-        inputs : dict, optional
-            Complex input parameters.
-        outputs : dict, optional
-            Complex output parameters.
-        parameters : dict, optional
-            Simple input parameters.
         kwargs : dict
-            Additional keyword arguments.
+            Execution parameters.
 
         Returns
         -------
         dsl.ContainerOp
             The constructed KFP ContainerOp.
-
-        Raises
-        ------
-        RuntimeError
-            If neither function nor workflow is provided, or if the specified entity is not found.
-        Exception
-            If an output is specified as a PipelineParam.
         """
-        # Prepare properties and arguments
-        props = {**kwargs}
-        props = {k: v for k, v in props.items() if v is not None}
+        project = os.environ.get(RuntimeEnvVar.PROJECT.value)
 
-        parameters = parameters if parameters is not None else {}
-        inputs = inputs if inputs is not None else {}
-        outputs = outputs if outputs is not None else {}
-
-        if not function and not workflow:
-            raise RuntimeError("Either function or workflow must be provided.")
-
-        function_object = workflow_object = None
-        if function:
-            function_object = dh.get_function(function, project=PROJECT)
-            if function_object is None:
-                raise RuntimeError(f"Function {function} not found")
-        if workflow:
-            workflow_object = dh.get_workflow(workflow, project=PROJECT)
-            if workflow_object is None:
-                raise RuntimeError(f"Workflow {workflow} not found")
-            if not action:
-                action = "pipeline"
-
-        file_outputs = {"run_id": "/tmp/run_id"}
         cmd = [
             "python",
             "step.py",
             "--project",
-            PROJECT,
+            project,
+            "--action",
+            action,
         ]
 
-        if function:
-            cmd += ["--function", function, "--function_id", function_object.id]
-        else:
-            cmd += ["--workflow", workflow, "--workflow_id", workflow_object.id]
+        # Prepare execution kwargs
+        exec_kwargs = {k: v for k, v in {**kwargs}.items() if v is not None}
 
-        cmd += ["--action", action, "--jsonprops", json.dumps(props)]
+        # Prepare outputs
+        file_outputs = {"run_id": "/tmp/run_id"}
+        if "outputs" in exec_kwargs:
+            if isinstance(exec_kwargs["outputs"], dict):
+                for val in exec_kwargs["outputs"].values():
+                    oname = str(val).replace(".", "_")
+                    file_outputs[oname] = f"/tmp/entity_{oname}"
 
-        # Add input parameters
-        for param, val in inputs.items():
-            cmd += ["-ie", f"{param}={val}"]
-        for param, val in parameters.items():
-            cmd += ["-iv", f"{param}={val}"]
+        cmd += ["--execkwargs", json.dumps(exec_kwargs, cls=PipelineParamEncoder)]
 
-        # Add output parameters and file outputs
-        for param, val in outputs.items():
-            cmd += ["-oe", f"{param}={val}"]
-            if isinstance(val, dsl.PipelineParam):
-                raise Exception("Invalid output specification: cannot use pipeline params")
-            oname = str(val).replace(".", "_")
-            file_outputs[oname] = f"/tmp/entity_{oname}"
+        # Add function or workflow
+        if function is None and workflow is None:
+            raise RuntimeError("Either function or workflow must be provided.")
 
+        exec_entity = None
+        if function is not None:
+            try:
+                exec_entity = dh.get_function(function, project=project)
+            except Exception:
+                raise RuntimeError(f"Function {function} not found")
+            cmd += ["--function", function, "--function_id", exec_entity.id]
+        elif workflow is not None:
+            try:
+                exec_entity = dh.get_workflow(workflow, project=project)
+            except Exception:
+                raise RuntimeError(f"Workflow {workflow} not found")
+            cmd += ["--workflow", workflow, "--workflow_id", exec_entity.id]
+
+        if exec_entity is None:
+            raise RuntimeError("Function or workflow not found")
+
+        # Create ContainerOp
         cop = dsl.ContainerOp(
             name=name,
-            image=WORKFLOW_IMAGE,
+            image=os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value),
             command=cmd,
             file_outputs=file_outputs,
         )
-        cop.add_pod_label(LABEL_PREFIX + "project", PROJECT)
-        if function:
-            cop.add_pod_label(LABEL_PREFIX + "function", function)
-            cop.add_pod_label(LABEL_PREFIX + "function_id", function_object.id)
-        if workflow:
-            cop.add_pod_label(LABEL_PREFIX + "workflow", workflow)
-            cop.add_pod_label(LABEL_PREFIX + "workflow_id", workflow_object.id)
-        cop.add_pod_label(LABEL_PREFIX + "action", action)
+
+        # Add labels
+        for k, v in [
+            (f"{LABEL_PREFIX}project", project),
+            (f"{LABEL_PREFIX}{exec_entity.ENTITY_TYPE}", exec_entity.name),
+            (f"{LABEL_PREFIX}{exec_entity.ENTITY_TYPE}_id", exec_entity.id),
+            (f"{LABEL_PREFIX}action", action),
+        ]:
+            cop.add_pod_label(k, v)
+
         return cop

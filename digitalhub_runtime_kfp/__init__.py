@@ -18,5 +18,6 @@ try:
     from digitalhub_runtime_kfp.runtimes.builder import RuntimeKfpBuilder
 
     runtime_builders = ((kind, RuntimeKfpBuilder) for kind in [e.value for e in EntityKinds])
-except ImportError:
+except ImportError as e:
+    raise e
     runtime_builders = tuple()
