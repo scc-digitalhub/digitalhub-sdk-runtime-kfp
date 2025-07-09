@@ -12,12 +12,7 @@ from digitalhub.runtimes._base import Runtime
 from digitalhub.utils.logger import LOGGER
 
 from digitalhub_runtime_kfp.entities._commons.enums import TaskActions
-from digitalhub_runtime_kfp.utils.configurations import (
-    get_dhcore_workflow,
-    get_kfp_pipeline,
-    parse_workflow_specs,
-    save_workflow_source,
-)
+from digitalhub_runtime_kfp.utils.configuration import get_dhcore_workflow, get_kfp_pipeline, save_workflow_source
 from digitalhub_runtime_kfp.utils.functions import run_kfp_build
 from digitalhub_runtime_kfp.utils.outputs import build_status
 
@@ -146,10 +141,6 @@ class RuntimeKfp(Runtime):
         ----------
         spec : dict
             Run specs.
-        action : str
-            Action to execute.
-        project : str
-            Name of the project.
 
         Returns
         -------
@@ -157,14 +148,17 @@ class RuntimeKfp(Runtime):
             KFP pipeline to execute and parameters.
         """
         # Setup function source and specs
-        LOGGER.info("Getting workflow source and specs.")
+        LOGGER.info("Getting workflow source, specs and pipeline.")
         dhcore_workflow = get_dhcore_workflow(spec.get("workflow"))
-        workflow_source = save_workflow_source(self.runtime_dir, dhcore_workflow.spec.to_dict().get("source"))
-        workflow_specs = parse_workflow_specs(dhcore_workflow.spec)
-
-        # Create kfp project
-        LOGGER.info("Creating KFP project and workflow.")
-        return get_kfp_pipeline(dhcore_workflow.name, workflow_source, workflow_specs)
+        workflow_source = save_workflow_source(
+            self.runtime_dir,
+            dhcore_workflow.spec.to_dict().get("source"),
+        )
+        return get_kfp_pipeline(
+            dhcore_workflow.name,
+            workflow_source,
+            dhcore_workflow.spec.to_dict().get("source", {}).get("handler"),
+        )
 
     ##############################
     # Cleanup
