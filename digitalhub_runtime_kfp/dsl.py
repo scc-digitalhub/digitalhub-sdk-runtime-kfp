@@ -37,7 +37,9 @@ class PipelineContext:
         name: str,
         action: str,
         function: str | None = None,
+        function_id: str | None = None,
         workflow: str | None = None,
+        workflow_id: str | None = None,
         step_outputs: dict | None = None,
         **kwargs,
     ) -> dsl.ContainerOp:
@@ -53,10 +55,16 @@ class PipelineContext:
             Name of the KFP step.
         action : str
             Action to execute.
-        function : str, optional
+        function : str
             Name of the DHCore function to execute.
-        workflow : str, optional
+        function_id : str
+            ID of the DHCore function to execute.
+        workflow : str
             Name of the DHCore workflow to execute.
+        workflow_id : str
+            ID of the DHCore workflow to execute.
+        step_outputs : dict
+            Output mapping for the KFP step.
         kwargs : dict
             Execution parameters.
 
@@ -69,26 +77,24 @@ class PipelineContext:
         # Build command
         cmd = ["python", "step.py"]
 
-        # Get project name
-        project = os.environ.get(RuntimeEnvVar.PROJECT.value)
-
         # Add executable entity
         try:
+            project = os.environ.get(RuntimeEnvVar.PROJECT.value)
             if function is not None:
-                exec_entity = dh.get_function(function, project=project)
+                exec_entity = dh.get_function(function, project=project, entity_id=function_id)
             elif workflow is not None:
-                exec_entity = dh.get_workflow(workflow, project=project)
+                exec_entity = dh.get_workflow(workflow, project=project, entity_id=workflow_id)
             else:
                 raise RuntimeError("Either function or workflow must be provided.")
         except Exception as e:
             raise RuntimeError("Function or workflow not found.") from e
-
-        cmd += ["--entity", exec_entity.key]
+        cmd.extend(["--entity", exec_entity.key])
 
         # Prepare execution kwargs
         exec_kwargs = {k: v for k, v in {**kwargs}.items() if v is not None}
         exec_kwargs["action"] = action
-        cmd += ["--kwargs", json.dumps(exec_kwargs, cls=PipelineParamEncoder)]
+        exec_kwargs["wait"] = True
+        cmd.extend(["--kwargs", json.dumps(exec_kwargs, cls=PipelineParamEncoder)])
 
         # Prepare outputs
         file_outputs = {"run_id": "/tmp/run_id"}
@@ -98,10 +104,15 @@ class PipelineContext:
                 oname = str(val).replace(".", "_")
                 file_outputs[oname] = f"/tmp/entity_{oname}"
 
+        # Get image stepper
+        image = os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value)
+        if image is None:
+            raise RuntimeError(f"Env var '{CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value}' is not set")
+
         # Create ContainerOp
         cop = dsl.ContainerOp(
             name=name,
-            image=os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value),
+            image=image,
             command=cmd,
             file_outputs=file_outputs,
         )
