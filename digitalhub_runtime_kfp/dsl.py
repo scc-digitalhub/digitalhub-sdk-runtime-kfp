@@ -8,7 +8,8 @@ import json
 import os
 from contextlib import contextmanager
 
-import digitalhub as dh
+from digitalhub.entities.function.crud import get_function
+from digitalhub.entities.workflow.crud import get_workflow
 from digitalhub.runtimes.enums import RuntimeEnvVar
 from digitalhub.stores.credentials.enums import CredsEnvVar
 from kfp import dsl
@@ -81,9 +82,9 @@ class PipelineContext:
         try:
             project = os.environ.get(RuntimeEnvVar.PROJECT.value)
             if function is not None:
-                exec_entity = dh.get_function(function, project=project, entity_id=function_id)
+                exec_entity = get_function(function, project=project, entity_id=function_id)
             elif workflow is not None:
-                exec_entity = dh.get_workflow(workflow, project=project, entity_id=workflow_id)
+                exec_entity = get_workflow(workflow, project=project, entity_id=workflow_id)
             else:
                 raise RuntimeError("Either function or workflow must be provided.")
         except Exception as e:
