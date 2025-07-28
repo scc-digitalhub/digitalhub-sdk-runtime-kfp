@@ -139,7 +139,7 @@ def source_post_check(exec: WorkflowKfp) -> WorkflowKfp:
         elif eval_zip_type(code_src):
             filename = Path(code_src).name
             dst = f"zip+{get_default_store(exec.project)}/{exec.project}/{exec.ENTITY_TYPE}/{exec.name}/{exec.id}/{filename}"
-            get_store(exec.project, dst).upload(code_src, dst)
+            get_store(dst).upload(code_src, dst)
             exec.spec.source["source"] = dst
             if ":" not in exec.spec.source["handler"]:
                 exec.spec.source["handler"] = f"{Path(code_src).stem}:{exec.spec.source['handler']}"
