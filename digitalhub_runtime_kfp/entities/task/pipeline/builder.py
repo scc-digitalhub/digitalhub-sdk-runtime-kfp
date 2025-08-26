@@ -8,9 +8,9 @@ from digitalhub.entities.task._base.builder import TaskBuilder
 
 from digitalhub_runtime_kfp.entities._base.runtime_entity.builder import RuntimeEntityBuilderKfp
 from digitalhub_runtime_kfp.entities._commons.enums import EntityKinds
-from digitalhub_runtime_kfp.entities.task.kfp_pipeline.entity import TaskKfpPipeline
-from digitalhub_runtime_kfp.entities.task.kfp_pipeline.spec import TaskSpecKfpPipeline, TaskValidatorKfpPipeline
-from digitalhub_runtime_kfp.entities.task.kfp_pipeline.status import TaskStatusKfpPipeline
+from digitalhub_runtime_kfp.entities.task.pipeline.entity import TaskKfpPipeline
+from digitalhub_runtime_kfp.entities.task.pipeline.spec import TaskSpecKfpPipeline, TaskValidatorKfpPipeline
+from digitalhub_runtime_kfp.entities.task.pipeline.status import TaskStatusKfpPipeline
 
 
 class TaskKfpPipelineBuilder(TaskBuilder, RuntimeEntityBuilderKfp):

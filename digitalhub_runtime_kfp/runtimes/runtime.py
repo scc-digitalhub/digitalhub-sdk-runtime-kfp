@@ -11,7 +11,7 @@ from digitalhub.context.api import get_context
 from digitalhub.runtimes._base import Runtime
 from digitalhub.utils.logger import LOGGER
 
-from digitalhub_runtime_kfp.entities._commons.enums import TaskActions
+from digitalhub_runtime_kfp.entities._commons.enums import Actions
 from digitalhub_runtime_kfp.utils.configuration import get_dhcore_workflow, get_kfp_pipeline, save_workflow_source
 from digitalhub_runtime_kfp.utils.functions import run_kfp_build
 from digitalhub_runtime_kfp.utils.outputs import build_status
@@ -101,7 +101,7 @@ class RuntimeKfp(Runtime):
         Callable
             Workflow to execute.
         """
-        if action == TaskActions.BUILD.value:
+        if action == Actions.BUILD.value:
             return run_kfp_build
         raise NotImplementedError
 

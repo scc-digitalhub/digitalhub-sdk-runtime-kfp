@@ -11,13 +11,13 @@ from digitalhub.entities.task._base.entity import Task
 if typing.TYPE_CHECKING:
     from digitalhub.entities._base.entity.metadata import Metadata
 
-    from digitalhub_runtime_kfp.entities.task.kfp_build.spec import TaskSpecKfpBuild
-    from digitalhub_runtime_kfp.entities.task.kfp_build.status import TaskStatusKfpBuild
+    from digitalhub_runtime_kfp.entities.task.pipeline.spec import TaskSpecKfpPipeline
+    from digitalhub_runtime_kfp.entities.task.pipeline.status import TaskStatusKfpPipeline
 
 
-class TaskKfpBuild(Task):
+class TaskKfpPipeline(Task):
     """
-    TaskKfpBuild class.
+    TaskKfpPipeline class.
     """
 
     def __init__(
@@ -26,11 +26,11 @@ class TaskKfpBuild(Task):
         uuid: str,
         kind: str,
         metadata: Metadata,
-        spec: TaskSpecKfpBuild,
-        status: TaskStatusKfpBuild,
+        spec: TaskSpecKfpPipeline,
+        status: TaskStatusKfpPipeline,
         user: str | None = None,
     ) -> None:
         super().__init__(project, uuid, kind, metadata, spec, status, user)
 
-        self.spec: TaskSpecKfpBuild
-        self.status: TaskStatusKfpBuild
+        self.spec: TaskSpecKfpPipeline
+        self.status: TaskStatusKfpPipeline

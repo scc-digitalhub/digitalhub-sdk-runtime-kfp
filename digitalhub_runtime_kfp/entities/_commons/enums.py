@@ -15,10 +15,11 @@ class EntityKinds(Enum):
     WORKFLOW_KFP = "kfp"
     TASK_KFP_PIPELINE = "kfp+pipeline"
     TASK_KFP_BUILD = "kfp+build"
-    RUN_KFP = "kfp+run"
+    RUN_KFP_PIPELINE = "kfp+pipeline:run"
+    RUN_KFP_BUILD = "kfp+build:run"
 
 
-class TaskActions(Enum):
+class Actions(Enum):
     """
     Task actions.
     """

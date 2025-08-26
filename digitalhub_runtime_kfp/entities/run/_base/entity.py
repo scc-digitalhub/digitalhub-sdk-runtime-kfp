@@ -11,14 +11,14 @@ from digitalhub.entities._commons.enums import Relationship
 from digitalhub.entities._commons.utils import get_entity_type_from_key
 from digitalhub.entities.run._base.entity import Run
 
-from digitalhub_runtime_kfp.entities.run.kfp_run.utils import get_getter_for_material
+from digitalhub_runtime_kfp.entities.run._base.utils import get_getter_for_material
 
 if typing.TYPE_CHECKING:
     from digitalhub.entities._base.entity.metadata import Metadata
     from digitalhub.entities._base.material.entity import MaterialEntity
 
-    from digitalhub_runtime_kfp.entities.run.kfp_run.spec import RunSpecKfpRun
-    from digitalhub_runtime_kfp.entities.run.kfp_run.status import RunStatusKfpRun
+    from digitalhub_runtime_kfp.entities.run._base.spec import RunSpecKfpRun
+    from digitalhub_runtime_kfp.entities.run._base.status import RunStatusKfpRun
 
 
 class RunKfpRun(Run):
