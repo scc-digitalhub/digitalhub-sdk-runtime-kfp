@@ -5,7 +5,7 @@
 
 The Digitalhub SDK Runtime Kfp is a runtime extension for the [Digitalhub SDK](https://github.com/scc-digitalhub/digitalhub-sdk). It enables you to define, build and deploy Argo Workflows in the Digitalhub platform.
 
-Explore the full documentation at the [link](https://scc-digitalhub.github.io/sdk-docs/runtimes/kfp/).
+Explore the full documentation at the [link](https://scc-digitalhub.github.io/sdk-docs/reference/runtimes/).
 
 ## Quick start
 
