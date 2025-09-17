@@ -138,6 +138,8 @@ def get_kfp_pipeline(name: str, source: Path, handler: str) -> Callable:
         KFP pipeline.
     """
     try:
+        if ":" in handler:
+            handler = handler.split(":")[-1]
         return import_function(source, handler)
     except Exception as e:
         msg = f"Error getting '{name}' KFP pipeline. Exception: {e.__class__}. Error: {e.args}"
