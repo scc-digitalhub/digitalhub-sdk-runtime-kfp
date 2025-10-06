@@ -167,9 +167,5 @@ class RuntimeKfp(Runtime):
     def _cleanup(self) -> None:
         """
         Cleanup root folder.
-
-        Returns
-        -------
-        None
         """
         shutil.rmtree(self.runtime_dir, ignore_errors=True)
