@@ -61,7 +61,6 @@ def build_status(
         KFP Execution results.
     client: Client
         reference to the KFP API client
-
     """
     try:
         if build is not None:
