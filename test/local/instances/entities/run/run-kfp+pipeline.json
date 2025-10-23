@@ -1,7 +1,7 @@
 {
     "id": "213ce83a-8f51-4424-bf56-13ad54595a22",
     "key": "store://demo-etl/run/kfp+run/213ce83a-8f51-4424-bf56-13ad54595a22",
-    "kind": "kfp+run",
+    "kind": "kfp+pipeline:run",
     "metadata": {
       "name": "213ce83a-8f51-4424-bf56-13ad54595a22",
       "updated_by": "digitalhubdev",
