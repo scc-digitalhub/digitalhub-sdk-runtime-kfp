@@ -24,7 +24,7 @@ class RuntimeEntityBuilderKfp(RuntimeEntityBuilder):
             ),
         ]
     )
-    RUNS_KINDS = map_actions(
+    RUN_KINDS = map_actions(
         [
             (
                 EntityKinds.RUN_KFP_PIPELINE.value,
