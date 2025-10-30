@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from digitalhub.entities.function.crud import get_function
 from digitalhub.entities.workflow.crud import get_workflow
 from digitalhub.runtimes.enums import RuntimeEnvVar
-from digitalhub.stores.credentials.enums import CredsEnvVar
+from digitalhub.stores.configurator.enums import ConfigurationVars
 from kfp import dsl
 
 LABEL_PREFIX = "kfp-digitalhub-runtime-"
@@ -106,9 +106,9 @@ class PipelineContext:
                 file_outputs[oname] = f"/tmp/entity_{oname}"
 
         # Get image stepper
-        image = os.environ.get(CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value)
+        image = os.environ.get(ConfigurationVars.DHCORE_WORKFLOW_IMAGE.value)
         if image is None:
-            raise RuntimeError(f"Env var '{CredsEnvVar.DHCORE_WORKFLOW_IMAGE.value}' is not set")
+            raise RuntimeError(f"Env var '{ConfigurationVars.DHCORE_WORKFLOW_IMAGE.value}' is not set")
 
         # Create ContainerOp
         cop = dsl.ContainerOp(
